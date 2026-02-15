@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ramadan Wallpaper — Suhoor & Iftar on your lock screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Cormorant+SC:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --gold:#D4A847; --gold-dim:rgba(212,168,71,0.25);
+  --deep:#04061A; --text:rgba(255,255,255,0.85);
+  --muted:rgba(255,255,255,0.4);
+}
+body {
+  background: var(--deep);
+  color: var(--text);
+  font-family: 'Cormorant Garamond', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* STARS */
+#starfield { position:fixed; inset:0; pointer-events:none; z-index:0; }
+
+/* NAV */
+nav {
+  position: relative; z-index:10;
+  padding: 28px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(212,168,71,0.1);
+}
+.nav-logo { font-family:'Amiri',serif; font-size:22px; color:var(--gold); direction:rtl; }
+.nav-en { font-family:'Cormorant SC',serif; font-size:13px; letter-spacing:0.25em; color:var(--muted); text-transform:uppercase; }
+
+/* HERO */
+.hero {
+  position:relative; z-index:1;
+  text-align:center;
+  padding: 80px 24px 60px;
+}
+.hero-badge {
+  display:inline-block;
+  border:1px solid var(--gold-dim);
+  padding:6px 18px;
+  font-size:11px; letter-spacing:0.35em; text-transform:uppercase;
+  color:var(--gold); margin-bottom:32px;
+}
+.hero-arabic {
+  font-family:'Amiri',serif; font-size:clamp(36px,7vw,72px);
+  color:var(--gold); direction:rtl; margin-bottom:12px; line-height:1.2;
+  text-shadow: 0 0 60px rgba(212,168,71,0.3);
+}
+.hero-title {
+  font-family:'Cormorant Garamond',serif; font-size:clamp(22px,4vw,42px);
+  font-weight:300; font-style:italic; line-height:1.3;
+  color:rgba(255,255,255,0.9); margin-bottom:20px;
+}
+.hero-sub { font-size:16px; color:var(--muted); max-width:520px; margin:0 auto; line-height:1.75; }
+
+/* DIVIDER */
+.divider { width:80px; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); margin:40px auto; }
+
+/* CONFIGURE CARD */
+.config-card {
+  position:relative; z-index:1;
+  max-width:600px; margin:0 auto;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(212,168,71,0.2);
+  padding:48px 40px;
+}
+.config-title {
+  font-family:'Cormorant SC',serif; font-size:13px; letter-spacing:0.3em;
+  text-transform:uppercase; color:var(--gold); margin-bottom:32px; text-align:center;
+}
+
+.field { margin-bottom:24px; }
+.field label {
+  display:block; font-size:11px; letter-spacing:0.25em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:8px;
+}
+.field input, .field select {
+  width:100%; background:rgba(255,255,255,0.04);
+  border:1px solid rgba(212,168,71,0.2);
+  color:white; padding:13px 16px;
+  font-family:'Cormorant Garamond',serif; font-size:16px;
+  outline:none; transition:border-color 0.2s;
+}
+.field input:focus, .field select:focus { border-color:rgba(212,168,71,0.6); }
+.field input::placeholder { color:rgba(255,255,255,0.2); font-style:italic; }
+.field select option { background:#0a0a12; }
+
+.fields-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:480px){ .fields-row { grid-template-columns:1fr; } }
+
+.gen-btn {
+  width:100%; background:rgba(212,168,71,0.12);
+  border:1px solid rgba(212,168,71,0.5); color:var(--gold);
+  padding:16px; font-family:'Cormorant SC',serif;
+  font-size:14px; letter-spacing:0.3em; text-transform:uppercase;
+  cursor:pointer; transition:all 0.2s; margin-top:8px;
+}
+.gen-btn:hover { background:rgba(212,168,71,0.22); }
+
+/* URL OUTPUT */
+.url-box {
+  margin-top:28px; display:none;
+  border:1px solid rgba(212,168,71,0.3); padding:20px;
+  background:rgba(212,168,71,0.05);
+}
+.url-box.visible { display:block; }
+.url-label { font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--gold); margin-bottom:10px; }
+.url-text {
+  font-family:monospace; font-size:12px; color:rgba(255,255,255,0.7);
+  word-break:break-all; line-height:1.6; background:rgba(0,0,0,0.3);
+  padding:12px; border:1px solid rgba(255,255,255,0.06);
+}
+.url-actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.url-btn {
+  flex:1; min-width:120px; text-align:center;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.7); padding:10px 16px;
+  font-family:'Cormorant SC',serif; font-size:12px; letter-spacing:0.15em;
+  cursor:pointer; text-decoration:none; transition:all 0.2s; display:inline-block;
+}
+.url-btn:hover { background:rgba(255,255,255,0.1); }
+.url-btn.primary { border-color:rgba(212,168,71,0.5); color:var(--gold); background:rgba(212,168,71,0.08); }
+
+/* SETUP STEPS */
+.setup { max-width:680px; margin:80px auto; padding:0 24px; position:relative; z-index:1; }
+.setup-title {
+  font-family:'Cormorant SC',serif; font-size:13px; letter-spacing:0.3em;
+  text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:48px;
+}
+
+.step { display:flex; gap:28px; margin-bottom:48px; }
+.step-num {
+  width:44px; height:44px; flex-shrink:0;
+  border:1px solid rgba(212,168,71,0.3);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Cormorant Garamond',serif; font-size:18px; color:var(--gold);
+}
+.step-body {}
+.step-heading { font-size:20px; font-weight:400; margin-bottom:8px; line-height:1.3; }
+.step-text { font-size:14px; color:var(--muted); line-height:1.8; }
+.step-text strong { color:rgba(255,255,255,0.75); font-weight:400; }
+.step-code {
+  margin-top:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+  padding:12px 16px; font-family:monospace; font-size:12px;
+  color:rgba(255,255,255,0.6); line-height:1.7;
+}
+
+/* ANDROID NOTE */
+.android-note {
+  max-width:600px; margin:0 auto 80px; padding:28px 32px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.02); position:relative; z-index:1;
+}
+.android-note-title { font-size:16px; margin-bottom:10px; }
+.android-note-text { font-size:14px; color:var(--muted); line-height:1.8; }
+
+/* FOOTER */
+footer {
+  text-align:center; padding:48px 24px;
+  border-top:1px solid rgba(212,168,71,0.1);
+  position:relative; z-index:1;
+}
+footer .fa { font-family:'Amiri',serif; font-size:24px; color:var(--gold); direction:rtl; display:block; margin-bottom:10px; }
+footer p { font-size:13px; color:var(--muted); letter-spacing:0.05em; }
+footer a { color:rgba(212,168,71,0.6); text-decoration:none; }
+footer a:hover { color:var(--gold); }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<nav>
+  <div class="nav-logo">رمضان كريم</div>
+  <div class="nav-en">Ramadan Wallpaper</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">✦ Auto-updating lock screen ✦</div>
+  <div class="hero-arabic">السحور والإفطار</div>
+  <h1 class="hero-title">Suhoor & Iftar times on your lock screen,<br>updated automatically every day</h1>
+  <p class="hero-sub">No app. No login. Just a URL that generates a fresh wallpaper for your city, every single day of Ramadan.</p>
+</section>
+
+<div class="divider"></div>
+
+<!-- CONFIGURE -->
+<div style="position:relative;z-index:1;padding:0 24px 0;">
+<div class="config-card">
+  <div class="config-title">✦ Build your wallpaper URL</div>
+
+  <div class="field">
+    <label>Your City</label>
+    <input type="text" id="city" placeholder="e.g. Dubai, London, Cairo, Kuala Lumpur…" value="Dubai">
+  </div>
+
+  <div class="fields-row">
+    <div class="field">
+      <label>Country (optional)</label>
+      <input type="text" id="country" placeholder="e.g. AE, UK, EG">
+    </div>
+    <div class="field">
+      <label>Phone Model</label>
+      <select id="model">
+        <option value="iphone16pro">iPhone 16 Pro</option>
+        <option value="iphone16">iPhone 16</option>
+        <option value="iphone15" selected>iPhone 15</option>
+        <option value="iphone14">iPhone 14</option>
+        <option value="iphone13">iPhone 13</option>
+        <option value="s24ultra">Samsung S24 Ultra</option>
+        <option value="s24">Samsung S24</option>
+        <option value="pixel8">Pixel 8</option>
+        <option value="default">Other</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="generateURL()">Generate My Wallpaper URL →</button>
+
+  <div class="url-box" id="urlBox">
+    <div class="url-label">✦ Your personalised wallpaper URL</div>
+    <div class="url-text" id="urlDisplay"></div>
+    <div class="url-actions">
+      <button class="url-btn primary" onclick="copyURL()">Copy URL</button>
+      <a class="url-btn" id="previewLink" href="#" target="_blank">Preview in browser</a>
+    </div>
+    <p style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:12px;line-height:1.6;">
+      This URL returns a fresh PNG image every time it's called — no caching. 
+      Paste it into iOS Shortcuts below. The image automatically uses today's prayer times for your city.
+    </p>
+  </div>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SETUP STEPS -->
+<section class="setup">
+  <div class="setup-title">✦ How to set it up on iPhone (iOS Shortcuts)</div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-heading">Copy your URL above</div>
+      <p class="step-text">Click "Generate My Wallpaper URL" and then "Copy URL". This URL is personal to your city and phone — it fetches today's Suhoor & Iftar times every time it's called.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-heading">Open the Shortcuts app → Automation tab</div>
+      <p class="step-text">Tap the <strong>+</strong> button in the top right. Select <strong>"New Automation"</strong>. Choose <strong>"Time of Day"</strong>. Set the time to <strong>4:00 AM</strong> (before Suhoor begins). Set it to repeat <strong>Daily</strong>. Most importantly: select <strong>"Run Immediately"</strong> — this lets it run silently without a confirmation popup.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-heading">Add two actions to the automation</div>
+      <p class="step-text">Tap <strong>"Create New Shortcut"</strong>. Search for and add:<br><br>
+      <strong>Action 1:</strong> "Get Contents of URL" — paste your copied URL here.<br><br>
+      <strong>Action 2:</strong> "Set Wallpaper Photo" — set it to use "Contents of URL" from the previous action. Tap the chevron (›) and <strong>turn OFF "Show Preview"</strong> and <strong>"Crop to Subject"</strong>. Set Wallpaper Location to <strong>Lock Screen only</strong>.</p>
+      <div class="step-code">
+Action 1: Get Contents of URL
+  URL: [paste your URL here]
+
+Action 2: Set Wallpaper Photo
+  Photo: Contents of URL (from Action 1)
+  Location: Lock Screen ✓  |  Home Screen ✗
+  Show Preview: OFF
+  Crop to Subject: OFF
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-heading">Run it once manually to set the first wallpaper</div>
+      <p class="step-text">Tap the <strong>▶ Play button</strong> in the Shortcuts editor to run it immediately. Your lock screen will update within a few seconds. After that, it runs silently every morning at 4 AM — you'll wake up to today's Suhoor & Iftar times already on your screen.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <div class="step-heading">Optional: Second automation at Maghrib</div>
+      <p class="step-text">For an even more reactive experience, create a <strong>second automation</strong> using the same steps but set the time to your approximate local Maghrib time. This refreshes the wallpaper again at Iftar, with a "completed ✓" state for the Iftar countdown.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ANDROID NOTE -->
+<div class="android-note" style="position:relative;z-index:1;">
+  <div class="android-note-title">📱 Android users</div>
+  <p class="android-note-text">
+    Use <strong>Tasker</strong> (paid, ~$3) or <strong>MacroDroid</strong> (free) to create a daily trigger at 4 AM that:
+    downloads the wallpaper URL → saves to a file → applies as wallpaper via the "Set Wallpaper" action.
+    In Tasker: <em>Trigger: Time 04:00 → Action: HTTP Get [your URL] → Save to file → Set Wallpaper</em>.
+    All three apps support this workflow natively.
+  </p>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span class="fa">رمضان مبارك</span>
+  <p>Open source · Free forever · Built for the Ummah</p>
+  <p style="margin-top:8px;"><a href="https://github.com/YOUR_USERNAME/ramadan-wallpaper" target="_blank">GitHub ↗</a> &nbsp;·&nbsp; Prayer times via <a href="https://aladhan.com" target="_blank">Aladhan API</a></p>
+</footer>
+
+<script>
+// ── Starfield ──────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    stars = Array.from({length: 120}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height * 0.6,
+      r: Math.random() * 1.3 + 0.2,
+      phase: Math.random() * Math.PI * 2,
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const t = Date.now() / 1000;
+    stars.forEach(s => {
+      const a = 0.3 + 0.5 * Math.sin(t * 1.2 + s.phase);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,248,220,${a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  draw();
+})();
+
+// ── URL Generator ─────────────────────────────────────────────────────────
+function generateURL() {
+  const city    = document.getElementById('city').value.trim() || 'Dubai';
+  const country = document.getElementById('country').value.trim();
+  const model   = document.getElementById('model').value;
+
+  // Use window.location.origin so it works on any deployment
+  const base = window.location.origin;
+  let url = `${base}/wallpaper.png?city=${encodeURIComponent(city)}&model=${model}`;
+  if (country) url += `&country=${encodeURIComponent(country)}`;
+
+  document.getElementById('urlDisplay').textContent = url;
+  document.getElementById('previewLink').href = url;
+  document.getElementById('urlBox').classList.add('visible');
+
+  // Scroll to it
+  document.getElementById('urlBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyURL() {
+  const url = document.getElementById('urlDisplay').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+// ── Allow Enter key on inputs ──────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (document.activeElement.id === 'city' || document.activeElement.id === 'country')) {
+    generateURL();
+  }
+});
+</script>
+</body>
+</html>
