@@ -1,6 +1,5 @@
 // api/wallpaper.js — ZERO DEPENDENCIES
-// THE DOT ARC: 30 dots arranged in an arc, each Y-position reflects that day's sunrise time.
-// As sunrise gets earlier through Ramadan, the dots naturally curve downward.
+// THE DOT ARC: 30 dots in a simple, elegant arc. No sunrise calculation.
 
 async function getPrayerTimes(city, country, date) {
   const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
@@ -46,7 +45,7 @@ const SIZES = {
   default:[1179,2556],
 };
 
-function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, city, hour, sunrises }) {
+function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, city, hour }) {
   const sky   = skyColors(hour);
   const night = isNight(hour);
   const stars = makeStars(W, H);
@@ -57,7 +56,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   const BOTTOM_ANCHOR = H * 0.968;
   const GAP           = H * 0.020;
   const TIME_H        = H * 0.130;
-  const DOT_ARC_H     = H * 0.240;  // space for dot arc + رمضان
+  const DOT_ARC_H     = H * 0.240;
   const HIJRI_H       = H * 0.048;
 
   const SUHOOR_Y  = BOTTOM_ANCHOR - TIME_H;
@@ -72,41 +71,31 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
     rowAr:    W*0.046,
     rowTime:  W*0.092,
     city:     W*0.022,
-    ramadan:  W*0.140,  // large رمضان word
+    ramadan:  W*0.140,
   };
 
-  // ── DOT ARC LAYOUT ──────────────────────────────────────────────────────────
-  // 30 dots spread horizontally across ~88% of width
-  // Y position for each dot determined by that day's sunrise time
-  
+  // ── DOT ARC: simple parabolic curve ───────────────────────────────────────
   const ARC_X_START = PAD + CW * 0.06;
   const ARC_X_END   = PAD + CW * 0.94;
   const ARC_X_SPAN  = ARC_X_END - ARC_X_START;
   const DOT_X_STEP  = ARC_X_SPAN / 29;
 
-  // Map sunrise times to Y positions
-  // Find min/max sunrise across all 30 days
-  const sunriseMins = sunrises.map(s => s.h * 60 + s.m);
-  const minSunrise  = Math.min(...sunriseMins);
-  const maxSunrise  = Math.max(...sunriseMins);
-  const sunriseRange = maxSunrise - minSunrise || 1;
-
-  // Y range for arc: from DOT_ARC_Y + 30% to DOT_ARC_Y + 85% of DOT_ARC_H
-  const ARC_Y_TOP = DOT_ARC_Y + DOT_ARC_H * 0.30;
+  // Y positions: parabola from top to bottom
+  const ARC_Y_TOP = DOT_ARC_Y + DOT_ARC_H * 0.28;
   const ARC_Y_BOT = DOT_ARC_Y + DOT_ARC_H * 0.88;
-  const ARC_Y_RANGE = ARC_Y_BOT - ARC_Y_TOP;
+  const ARC_Y_MID = (ARC_Y_TOP + ARC_Y_BOT) / 2;
+  const ARC_DEPTH = (ARC_Y_BOT - ARC_Y_TOP) * 0.42; // how much it curves down
 
-  // Compute dot positions
-  const dots = sunrises.map((sr, i) => {
-    const mins = sr.h * 60 + sr.m;
-    // Later sunrise = higher Y value (lower on screen)
-    // Map: maxSunrise → ARC_Y_BOT, minSunrise → ARC_Y_TOP
-    const normalised = (mins - minSunrise) / sunriseRange;
-    const y = ARC_Y_TOP + normalised * ARC_Y_RANGE;
-    return { x: ARC_X_START + i * DOT_X_STEP, y, day: i + 1 };
-  });
+  const dots = [];
+  for (let i = 0; i < 30; i++) {
+    const x = ARC_X_START + i * DOT_X_STEP;
+    // Parabola: y = a * (x - mid)^2 + peak
+    const normX = (i - 14.5) / 14.5; // normalize around center (-1 to 1)
+    const y = ARC_Y_TOP + ARC_DEPTH * (1 - normX * normX); // inverted parabola
+    dots.push({ x, y, day: i + 1 });
+  }
 
-  // ── SVG START ───────────────────────────────────────────────────────────────
+  // ── SVG START ──────────────────────────────────────────────────────────────
   let o = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
 <style>text{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif}</style>
@@ -186,15 +175,9 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   o += `<text x="${W/2}" y="${(DOT_ARC_Y + DOT_ARC_H*0.35).toFixed(0)}" text-anchor="middle"
   font-size="${FS.ramadan.toFixed(0)}" font-weight="200" fill="rgba(212,168,71,0.12)" letter-spacing="4">رمضان</text>`;
 
-  // Connecting arc path (bezier through the dots, very subtle)
-  if (dots.length === 30) {
-    const first = dots[0], last = dots[29];
-    const mid = dots[14];
-    // Quadratic bezier: start → control point (mid raised a bit) → end
-    const ctrlX = mid.x;
-    const ctrlY = mid.y - DOT_ARC_H * 0.08;
-    o += `<path d="M ${first.x.toFixed(1)},${first.y.toFixed(1)} Q ${ctrlX.toFixed(1)},${ctrlY.toFixed(1)} ${last.x.toFixed(1)},${last.y.toFixed(1)}" fill="none" stroke="rgba(212,168,71,0.10)" stroke-width="1"/>`;
-  }
+  // Connecting arc path (quadratic bezier through all dots)
+  const first = dots[0], last = dots[29], mid = dots[14];
+  o += `<path d="M ${first.x.toFixed(1)},${first.y.toFixed(1)} Q ${mid.x.toFixed(1)},${mid.y.toFixed(1)} ${last.x.toFixed(1)},${last.y.toFixed(1)}" fill="none" stroke="rgba(212,168,71,0.10)" stroke-width="1"/>`;
 
   // The 30 dots
   for (let i = 0; i < dots.length; i++) {
@@ -211,16 +194,15 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
     }
   }
 
-  // Day label beneath the arc
+  // Day label beneath the arc — ENGLISH NUMBERS
   o += `<text x="${W/2}" y="${(DOT_ARC_Y + DOT_ARC_H*0.98).toFixed(0)}" text-anchor="middle"
-  font-size="${(FS.city*1.05).toFixed(0)}" font-weight="300" fill="rgba(255,255,255,0.18)" letter-spacing="4">DAY  ${toAr(ramadanDay)}  OF  ${toAr(30)}</text>`;
+  font-size="${(FS.city*1.05).toFixed(0)}" font-weight="300" fill="rgba(255,255,255,0.18)" letter-spacing="4">DAY ${ramadanDay} OF 30</text>`;
 
   // DIVIDER
   {
     const DY = (DIVIDER_Y+GAP*0.4).toFixed(0);
     const DW = CW*0.38;
     o += `<line x1="${(W/2-DW/2).toFixed(0)}" y1="${DY}" x2="${(W/2+DW/2).toFixed(0)}" y2="${DY}" stroke="rgba(212,168,71,0.18)" stroke-width="1"/>`;
-    // tiny 8-star at center
     let sp='';
     const sr1=W*0.006, sr2=sr1*0.42;
     for(let i=0;i<16;i++){const r=i%2===0?sr1:sr2,a=(i*Math.PI/8)-Math.PI/2;sp+=`${(W/2+r*Math.cos(a)).toFixed(1)},${(parseFloat(DY)+r*Math.sin(a)).toFixed(1)} `;}
@@ -259,7 +241,6 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   return o;
 }
 
-// ─── Vercel handler ───────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   const city    = (req.query.city    || 'Dubai').trim();
   const country = (req.query.country || '').trim();
@@ -290,28 +271,7 @@ module.exports = async function handler(req, res) {
     const hijriDate      = `${toAr(h.day)} ${h.month.ar} ${toAr(h.year)}`;
     const hour           = today.getHours();
 
-    // ── Fetch sunrise times for all 30 days of Ramadan ────────────────────────
-    // Use the Hijri date to determine the full range
-    const hijriYear  = parseInt(h.year);
-    const hijriMonth = parseInt(h.month.number);
-    
-    // Build a date for each day of Ramadan using Hijri calendar offsets
-    // Since we know today's Gregorian date and Hijri day, compute others
-    const sunrisePromises = [];
-    for (let day = 1; day <= 30; day++) {
-      const offset = day - ramadanDay; // days from today
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + offset);
-      sunrisePromises.push(
-        getPrayerTimes(city, country, targetDate)
-          .then(data => parseHHMM(data.timings.Sunrise))
-          .catch(() => ({ h: 6, m: 0 })) // fallback
-      );
-    }
-    
-    const sunrises = await Promise.all(sunrisePromises);
-
-    const svg = buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, city, hour, sunrises });
+    const svg = buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, city, hour });
 
     res.setHeader('Content-Type','image/svg+xml');
     res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');
