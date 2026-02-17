@@ -62,7 +62,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   const SUHOOR_Y  = BOTTOM_ANCHOR - TIME_H;
   const IFTAR_Y   = SUHOOR_Y - GAP - TIME_H;
   const DIVIDER_Y = IFTAR_Y - GAP*0.8;
-  const DOT_ARC_Y = (DIVIDER_Y - GAP*0.5 - DOT_ARC_H) + 50;
+  const DOT_ARC_Y = (DIVIDER_Y - GAP*0.5 - DOT_ARC_H) + 100;
   const HIJRI_Y   = DOT_ARC_Y - GAP*0.9;
 
   const FS = {
