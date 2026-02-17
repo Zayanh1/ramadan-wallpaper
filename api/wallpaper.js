@@ -91,7 +91,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
     const x = ARC_X_START + i * DOT_X_STEP;
     // Parabola: y = a * (x - mid)^2 + peak
     const normX = (i - 14.5) / 14.5; // normalize around center (-1 to 1)
-    const y = ARC_Y_TOP + ARC_DEPTH * (1 - normX * normX); // inverted parabola
+    const y = ARC_Y_TOP - ARC_DEPTH * (1 - normX * normX); // inverted parabola
     dots.push({ x, y, day: i + 1 });
   }
 
