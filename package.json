@@ -8,16 +8,9 @@
     "build": "echo 'No build step needed'",
     "start": "vercel dev"
   },
-  "dependencies": {
-    "@napi-rs/canvas": "^0.1.53"
-  },
+  "dependencies": {},
   "devDependencies": {
     "vercel": "^50.18.1"
-  },
-  "overrides": {
-    "ajv": "^8.18.0",
-    "path-to-regexp": "^8.3.0",
-    "undici": "^6.22.0"
   },
   "engines": {
     "node": ">=18.x"

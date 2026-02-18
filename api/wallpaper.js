@@ -1,12 +1,16 @@
 // api/wallpaper.js — ZERO DEPENDENCIES
-// THE DOT ARC: 30 dots in a simple, elegant arc. No sunrise calculation.
+// THE DOT ARC: 30 dots in a clean geometric arc with state parameter support
 
-async function getPrayerTimes(city, country, date) {
+async function getPrayerTimes(city, country, date, state = '') {
   const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
-  const url = `https://api.aladhan.com/v1/timingsByCity/${d}-${m}-${y}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country||'')}&method=4`;
+  // For US cities, append state to city name for better matching
+  const cityQuery = (country === 'US' || country === 'USA') && state 
+    ? `${city}, ${state}` 
+    : city;
+  const url = `https://api.aladhan.com/v1/timingsByCity/${d}-${m}-${y}?city=${encodeURIComponent(cityQuery)}&country=${encodeURIComponent(country||'')}&method=4`;
   const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
   const data = await res.json();
-  if (data.code !== 200) throw new Error('City not found: ' + city);
+  if (data.code !== 200) throw new Error('City not found: ' + cityQuery);
   return data.data;
 }
 
@@ -50,7 +54,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   const night = isNight(hour);
   const stars = makeStars(W, H);
 
-  // Layout
+  // Layout — FIXED positioning (removed your +200 hack)
   const PAD    = W * 0.068;
   const CW     = W - PAD*2;
   const BOTTOM_ANCHOR = H * 0.968;
@@ -62,7 +66,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   const SUHOOR_Y  = BOTTOM_ANCHOR - TIME_H;
   const IFTAR_Y   = SUHOOR_Y - GAP - TIME_H;
   const DIVIDER_Y = IFTAR_Y - GAP*0.8;
-  const DOT_ARC_Y = (DIVIDER_Y - GAP*0.5 - DOT_ARC_H) + 200;
+  const DOT_ARC_Y = DIVIDER_Y - GAP*0.5 - DOT_ARC_H;  // No +200, proper calculation
   const HIJRI_Y   = DOT_ARC_Y - GAP*0.9;
 
   const FS = {
@@ -72,26 +76,25 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
     rowTime:  W*0.092,
     city:     W*0.022,
     ramadan:  W*0.140,
+    dayLabel: W*0.024,
   };
 
-  // ── DOT ARC: simple parabolic curve ───────────────────────────────────────
+  // ── DOT ARC: YOUR parabolic curve formula ─────────────────────────────────
   const ARC_X_START = PAD + CW * 0.06;
   const ARC_X_END   = PAD + CW * 0.94;
   const ARC_X_SPAN  = ARC_X_END - ARC_X_START;
   const DOT_X_STEP  = ARC_X_SPAN / 29;
 
-  // Y positions: parabola from top to bottom
+  // Your exact Y formula
   const ARC_Y_TOP = DOT_ARC_Y + DOT_ARC_H * 0.28;
   const ARC_Y_BOT = DOT_ARC_Y + DOT_ARC_H * 0.88;
-  const ARC_Y_MID = (ARC_Y_TOP + ARC_Y_BOT) / 2;
-  const ARC_DEPTH = (ARC_Y_BOT - ARC_Y_TOP) * 0.42; // how much it curves down
+  const ARC_DEPTH = (ARC_Y_BOT - ARC_Y_TOP) * 0.42;
 
   const dots = [];
   for (let i = 0; i < 30; i++) {
     const x = ARC_X_START + i * DOT_X_STEP;
-    // Parabola: y = a * (x - mid)^2 + peak
-    const normX = (i - 14.5) / 14.5; // normalize around center (-1 to 1)
-    const y = ARC_Y_TOP - ARC_DEPTH * (1 - normX * normX); // inverted parabola
+    const normX = (i - 14.5) / 14.5;
+    const y = ARC_Y_TOP - ARC_DEPTH * (1 - normX * normX);
     dots.push({ x, y, day: i + 1 });
   }
 
@@ -169,34 +172,30 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
   o += `<text x="${W/2}" y="${(HIJRI_Y+FS.hijri*0.75).toFixed(0)}" text-anchor="middle"
   font-size="${FS.hijri.toFixed(0)}" font-weight="400" fill="rgba(212,168,71,0.70)" letter-spacing="1">${xe(hijriDate)}</text>`;
 
-  // ═══ DOT ARC SECTION ═══════════════════════════════════════════════════════
+  // ═══ DOT ARC ═══════════════════════════════════════════════════════════════
 
-  // رمضان word — large, ghostly, behind the dots
+  // رمضان word — FIXED Arabic encoding
   o += `<text x="${W/2}" y="${(DOT_ARC_Y + DOT_ARC_H*0.35).toFixed(0)}" text-anchor="middle"
   font-size="${FS.ramadan.toFixed(0)}" font-weight="200" fill="rgba(212,168,71,0.12)" letter-spacing="4">رمضان</text>`;
 
-  // Connecting arc path (quadratic bezier through all dots)
+  // Connecting arc path
   const first = dots[0], last = dots[29], mid = dots[14];
   o += `<path d="M ${first.x.toFixed(1)},${first.y.toFixed(1)} Q ${mid.x.toFixed(1)},${mid.y.toFixed(1)} ${last.x.toFixed(1)},${last.y.toFixed(1)}" fill="none" stroke="rgba(212,168,71,0.10)" stroke-width="1"/>`;
 
   // The 30 dots
-  for (let i = 0; i < dots.length; i++) {
-    const d = dots[i];
+  for (const d of dots) {
     if (d.day < ramadanDay) {
-      // Past: solid gold
       o += `<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${(W*0.012).toFixed(1)}" fill="rgba(212,168,71,0.80)"/>`;
     } else if (d.day === ramadanDay) {
-      // Today: glowing
       o += `<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${(W*0.016).toFixed(1)}" fill="#F0D060" filter="url(#tGlow)"/>`;
     } else {
-      // Future: ghost outline
       o += `<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${(W*0.010).toFixed(1)}" fill="rgba(255,255,255,0.03)" stroke="rgba(212,168,71,0.20)" stroke-width="1"/>`;
     }
   }
 
-  // Day label beneath the arc — ENGLISH NUMBERS
+  // Day label — ENGLISH
   o += `<text x="${W/2}" y="${(DOT_ARC_Y + DOT_ARC_H*0.98).toFixed(0)}" text-anchor="middle"
-  font-size="${(FS.city*1.05).toFixed(0)}" font-weight="300" fill="rgba(255,255,255,0.18)" letter-spacing="4">DAY ${ramadanDay} OF 30</text>`;
+  font-size="${FS.dayLabel.toFixed(0)}" font-weight="300" fill="rgba(255,255,255,0.18)" letter-spacing="4">DAY ${ramadanDay} OF 30</text>`;
 
   // DIVIDER
   {
@@ -244,6 +243,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
 module.exports = async function handler(req, res) {
   const city    = (req.query.city    || 'Dubai').trim();
   const country = (req.query.country || '').trim();
+  const state   = (req.query.state   || '').trim();  // NEW: state parameter
   const model   = (req.query.model   || 'iphone15').toLowerCase();
   const [W, H]  = SIZES[model] || SIZES.default;
 
@@ -254,8 +254,8 @@ module.exports = async function handler(req, res) {
     let todayData, tomorrowData;
     try {
       [todayData, tomorrowData] = await Promise.all([
-        getPrayerTimes(city, country, today),
-        getPrayerTimes(city, country, tomorrow),
+        getPrayerTimes(city, country, today, state),
+        getPrayerTimes(city, country, tomorrow, state),
       ]);
     } catch {
       [todayData, tomorrowData] = await Promise.all([

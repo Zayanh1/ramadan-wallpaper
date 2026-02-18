@@ -197,14 +197,21 @@ footer a:hover { color:var(--gold); }
 
   <div class="field">
     <label>Your City</label>
-    <input type="text" id="city" placeholder="e.g. Dubai, London, Cairo, Kuala Lumpur…" value="Dubai">
+    <input type="text" id="city" placeholder="e.g. Athens, London, Cairo, Dubai…" value="Athens">
   </div>
 
   <div class="fields-row">
     <div class="field">
-      <label>Country (optional)</label>
-      <input type="text" id="country" placeholder="e.g. AE, UK, EG">
+      <label>Country Code</label>
+      <input type="text" id="country" placeholder="e.g. US, UK, AE" value="US">
     </div>
+    <div class="field">
+      <label>State (US only)</label>
+      <input type="text" id="state" placeholder="e.g. GA, NY, CA" value="GA">
+    </div>
+  </div>
+
+  <div class="fields-row">
     <div class="field">
       <label>Phone Model</label>
       <select id="model">
@@ -353,14 +360,15 @@ Action 2: Set Wallpaper Photo
 
 // ── URL Generator ─────────────────────────────────────────────────────────
 function generateURL() {
-  const city    = document.getElementById('city').value.trim() || 'Dubai';
-  const country = document.getElementById('country').value.trim();
+  const city    = document.getElementById('city').value.trim() || 'Athens';
+  const country = document.getElementById('country').value.trim() || 'US';
+  const state   = document.getElementById('state').value.trim() || '';
   const model   = document.getElementById('model').value;
 
   // Use window.location.origin so it works on any deployment
   const base = window.location.origin;
-  let url = `${base}/wallpaper.png?city=${encodeURIComponent(city)}&model=${model}`;
-  if (country) url += `&country=${encodeURIComponent(country)}`;
+  let url = `${base}/wallpaper.png?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&model=${model}`;
+  if (state) url += `&state=${encodeURIComponent(state)}`;
 
   document.getElementById('urlDisplay').textContent = url;
   document.getElementById('previewLink').href = url;
