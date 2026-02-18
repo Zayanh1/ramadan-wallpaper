@@ -273,15 +273,32 @@ module.exports = async function handler(req, res) {
 
     const svg = buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, city, hour });
 
-    res.setHeader('Content-Type','image/svg+xml');
-    res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');
-    res.status(200).send(svg);
+    // Convert SVG to PNG using sharp
+    const sharp = require('sharp');
+    const pngBuffer = await sharp(Buffer.from(svg))
+      .png()
+      .toBuffer();
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.status(200).send(pngBuffer);
+
   } catch (err) {
-    res.setHeader('Content-Type','image/svg+xml');
-    res.status(200).send(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120">
+    // Return error as PNG
+    const errorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120">
       <rect width="400" height="120" fill="#060818"/>
       <text x="200" y="52" text-anchor="middle" fill="#D4A847" font-size="14" font-family="Arial">Error</text>
       <text x="200" y="80" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-family="Arial">${xe(err.message)}</text>
-    </svg>`);
+    </svg>`;
+    
+    try {
+      const sharp = require('sharp');
+      const errPng = await sharp(Buffer.from(errorSvg)).png().toBuffer();
+      res.setHeader('Content-Type', 'image/png');
+      res.status(200).send(errPng);
+    } catch {
+      res.setHeader('Content-Type', 'text/plain');
+      res.status(500).send('Error generating wallpaper');
+    }
   }
 };

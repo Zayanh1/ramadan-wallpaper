@@ -8,7 +8,9 @@
     "build": "echo 'No build step needed'",
     "start": "vercel dev"
   },
-  "dependencies": {},
+  "dependencies": {
+    "sharp": "^0.33.0"
+  },
   "devDependencies": {
     "vercel": "^50.18.1"
   },
