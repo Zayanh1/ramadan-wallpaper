@@ -243,7 +243,7 @@ function buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, cit
 module.exports = async function handler(req, res) {
   const city    = (req.query.city    || 'Dubai').trim();
   const country = (req.query.country || '').trim();
-  const state   = (req.query.state   || '').trim();  // NEW: state parameter
+  const state   = (req.query.state   || '').trim();
   const model   = (req.query.model   || 'iphone15').toLowerCase();
   const [W, H]  = SIZES[model] || SIZES.default;
 
@@ -273,11 +273,13 @@ module.exports = async function handler(req, res) {
 
     const svg = buildSVG({ W, H, todayIftar, tomorrowSuhoor, hijriDate, ramadanDay, city, hour });
 
-    // Convert SVG to PNG using sharp
-    const sharp = require('sharp');
-    const pngBuffer = await sharp(Buffer.from(svg))
-      .png()
-      .toBuffer();
+    // Convert SVG to PNG using resvg (handles fonts properly)
+    const { Resvg } = require('@resvg/resvg-js');
+    const resvg = new Resvg(svg, {
+      fitTo: { mode: 'width', value: W }
+    });
+    const pngData = resvg.render();
+    const pngBuffer = pngData.asPng();
 
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -288,12 +290,13 @@ module.exports = async function handler(req, res) {
     const errorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120">
       <rect width="400" height="120" fill="#060818"/>
       <text x="200" y="52" text-anchor="middle" fill="#D4A847" font-size="14" font-family="Arial">Error</text>
-      <text x="200" y="80" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-family="Arial">${xe(err.message)}</text>
+      <text x="200" y="80" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-family="Arial">${xe(err.message || 'Unknown error')}</text>
     </svg>`;
     
     try {
-      const sharp = require('sharp');
-      const errPng = await sharp(Buffer.from(errorSvg)).png().toBuffer();
+      const { Resvg } = require('@resvg/resvg-js');
+      const resvg = new Resvg(errorSvg, { fitTo: { mode: 'width', value: 400 }});
+      const errPng = resvg.render().asPng();
       res.setHeader('Content-Type', 'image/png');
       res.status(200).send(errPng);
     } catch {
