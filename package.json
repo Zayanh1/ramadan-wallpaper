@@ -9,7 +9,6 @@
     "start": "vercel dev"
   },
   "dependencies": {
-    "satori": "^0.10.14",
     "@resvg/resvg-js": "^2.6.0"
   },
   "devDependencies": {
