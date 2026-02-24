@@ -1,19 +1,20 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
     "api/wallpaper.js": {
       "maxDuration": 15,
-      "memory": 512
+      "includeFiles": "./fonts/*.ttf"
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/wallpaper.png",
-      "dest": "/api/wallpaper.js"
+      "source": "/wallpaper.png",
+      "destination": "/api/wallpaper.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/public/$1"
+      "source": "/(.*)",
+      "destination": "/public/$1"
     }
   ]
 }

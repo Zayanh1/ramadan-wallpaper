@@ -8,7 +8,7 @@
     "@resvg/resvg-js": "^2.6.0"
   },
   "devDependencies": {
-    "vercel": "^50.18.1"
+    "vercel": "^50.22.1"
   },
   "engines": {
     "node": ">=18.x"
