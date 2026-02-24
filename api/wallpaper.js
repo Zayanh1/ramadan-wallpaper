@@ -300,22 +300,71 @@ module.exports = async function handler(req, res) {
   const [W, H] = SIZES[model] || SIZES.default;
 
   try {
-    process.env.TZ = "UTC";
-    
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    // Always work in UTC on the server; derive the city's local time from the
+    // IANA timezone that the aladhan API returns in meta.timezone.
+    const nowUtc = new Date();
 
+    // Helper: given an IANA timezone string, return a plain Date whose
+    // .getFullYear()/.getMonth()/.getDate() reflect the city's LOCAL calendar date.
+    function localDateInTz(utcDate, tz) {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).formatToParts(utcDate);
+      const get = (t) => parseInt(parts.find((p) => p.type === t).value);
+      return new Date(get("year"), get("month") - 1, get("day"));
+    }
+
+    // Helper: given an IANA timezone string, return the local hour (0-23).
+    function localHourInTz(utcDate, tz) {
+      return parseInt(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "numeric",
+          hour12: false,
+        }).format(utcDate)
+      );
+    }
+
+    // First fetch: use the server's UTC date as a best-effort starting point
+    // (we need *some* date to query aladhan so we can learn the real timezone).
     let todayData, tomorrowData;
+    let cityTz;
     try {
+      // We need today's date in the city timezone, but we don't know the
+      // timezone yet. Use UTC date as the first approximation; it could be
+      // off by at most one day, but that edge case is handled below.
+      const utcToday = new Date(
+        Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
+      );
+      const utcTomorrow = new Date(utcToday);
+      utcTomorrow.setUTCDate(utcToday.getUTCDate() + 1);
+
+      [todayData] = await Promise.all([
+        getPrayerTimes(city, country, utcToday, state),
+      ]);
+
+      // Now we know the real timezone — re-derive today's LOCAL date and fetch
+      // both today + tomorrow using the correct local date.
+      cityTz = todayData.meta.timezone || "UTC";
+      const localToday = localDateInTz(nowUtc, cityTz);
+      const localTomorrow = new Date(localToday);
+      localTomorrow.setDate(localToday.getDate() + 1);
+
       [todayData, tomorrowData] = await Promise.all([
-        getPrayerTimes(city, country, today, state),
-        getPrayerTimes(city, country, tomorrow, state),
+        getPrayerTimes(city, country, localToday, state),
+        getPrayerTimes(city, country, localTomorrow, state),
       ]);
     } catch {
+      cityTz = "Asia/Dubai";
+      const localToday = localDateInTz(nowUtc, cityTz);
+      const localTomorrow = new Date(localToday);
+      localTomorrow.setDate(localToday.getDate() + 1);
       [todayData, tomorrowData] = await Promise.all([
-        getPrayerTimes("Dubai", "AE", today),
-        getPrayerTimes("Dubai", "AE", tomorrow),
+        getPrayerTimes("Dubai", "AE", localToday),
+        getPrayerTimes("Dubai", "AE", localTomorrow),
       ]);
     }
 
@@ -324,7 +373,8 @@ module.exports = async function handler(req, res) {
     const h = todayData.date.hijri;
     const ramadanDay = parseInt(h.day) || 1;
     const hijriDate = `${toAr(h.day)} ${h.month.ar} ${toAr(h.year)}`;
-    const hour = today.getHours();
+    // Use the city's LOCAL hour for sky colour — NOT the server's UTC hour.
+    const hour = localHourInTz(nowUtc, cityTz);
 
     const svg = buildSVG({
       W,
