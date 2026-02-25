@@ -81,6 +81,7 @@ function buildSVG({
   ramadanDay,
   city,
   hour,
+  gregorianDate,
 }) {
   const sky = skyColors(hour);
   const night = isNight(hour);
@@ -240,9 +241,9 @@ function buildSVG({
     }
   }
 
-  // Day label — ENGLISH
+  // Day label
   o += `<text x="${W / 2}" y="${(DOT_ARC_Y + DOT_ARC_H * 0.98).toFixed(0)}" text-anchor="middle"
-  font-size="${FS.dayLabel.toFixed(0)}" font-weight="300" fill="rgba(255,255,255,0.18)" letter-spacing="4">DAY ${ramadanDay} OF 30</text>`;
+  font-size="${FS.dayLabel.toFixed(0)}" font-weight="300" fill="rgba(255,255,255,0.18)" letter-spacing="5">${gregorianDate} • DAY ${ramadanDay}/30</text>`;
 
   // DIVIDER
   {
@@ -323,48 +324,33 @@ module.exports = async function handler(req, res) {
         new Intl.DateTimeFormat("en-US", {
           timeZone: tz,
           hour: "numeric",
-          hour12: false,
+          hourCycle: "h23",
         }).format(utcDate)
       );
     }
 
     // First fetch: use the server's UTC date as a best-effort starting point
     // (we need *some* date to query aladhan so we can learn the real timezone).
-    let todayData, tomorrowData;
-    let cityTz;
-    try {
-      // We need today's date in the city timezone, but we don't know the
-      // timezone yet. Use UTC date as the first approximation; it could be
-      // off by at most one day, but that edge case is handled below.
-      const utcToday = new Date(
-        Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
-      );
-      const utcTomorrow = new Date(utcToday);
-      utcTomorrow.setUTCDate(utcToday.getUTCDate() + 1);
+    const utcToday = new Date(
+      Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
+    );
 
-      [todayData] = await Promise.all([
-        getPrayerTimes(city, country, utcToday, state),
-      ]);
+    let todayData = await getPrayerTimes(city, country, utcToday, state);
+    const cityTz = todayData.meta.timezone || "UTC";
 
-      // Now we know the real timezone — re-derive today's LOCAL date and fetch
-      // both today + tomorrow using the correct local date.
-      cityTz = todayData.meta.timezone || "UTC";
-      const localToday = localDateInTz(nowUtc, cityTz);
-      const localTomorrow = new Date(localToday);
-      localTomorrow.setDate(localToday.getDate() + 1);
+    // Now we know the real timezone — re-derive today's LOCAL date.
+    const localToday = localDateInTz(nowUtc, cityTz);
+    const localTomorrow = new Date(localToday);
+    localTomorrow.setDate(localToday.getDate() + 1);
 
+    let tomorrowData;
+    // If our UTC guess matches the real local date, we can reuse todayData
+    if (utcToday.getTime() === localToday.getTime()) {
+      tomorrowData = await getPrayerTimes(city, country, localTomorrow, state);
+    } else {
       [todayData, tomorrowData] = await Promise.all([
         getPrayerTimes(city, country, localToday, state),
         getPrayerTimes(city, country, localTomorrow, state),
-      ]);
-    } catch {
-      cityTz = "Asia/Dubai";
-      const localToday = localDateInTz(nowUtc, cityTz);
-      const localTomorrow = new Date(localToday);
-      localTomorrow.setDate(localToday.getDate() + 1);
-      [todayData, tomorrowData] = await Promise.all([
-        getPrayerTimes("Dubai", "AE", localToday),
-        getPrayerTimes("Dubai", "AE", localTomorrow),
       ]);
     }
 
@@ -376,6 +362,8 @@ module.exports = async function handler(req, res) {
     // Use the city's LOCAL hour for sky colour — NOT the server's UTC hour.
     const hour = localHourInTz(nowUtc, cityTz);
 
+    const formattedGregorian = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(localToday).toUpperCase();
+
     const svg = buildSVG({
       W,
       H,
@@ -385,6 +373,7 @@ module.exports = async function handler(req, res) {
       ramadanDay,
       city,
       hour,
+      gregorianDate: formattedGregorian,
     });
 
     // Convert SVG to PNG using resvg (handles fonts properly)
