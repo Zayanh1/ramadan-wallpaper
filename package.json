@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {},
   "dependencies": {
-    "@resvg/resvg-js": "^2.6.0"
+    "@resvg/resvg-js": "^2.6.0",
+    "@vercel/speed-insights": "^2.0.0"
   },
   "devDependencies": {
     "vercel": "^50.22.1"
