@@ -378,14 +378,24 @@ module.exports = async function handler(req, res) {
 
     // Convert SVG to PNG using resvg (handles fonts properly)
     const { Resvg } = require("@resvg/resvg-js");
+    const path = require("path");
+    const fs = require("fs");
+
+    const candidateFonts = [
+      path.join(__dirname, "../fonts/CormorantGaramond-Variable.ttf"),
+      path.join(__dirname, "../fonts/Amiri-Regular.ttf"),
+      path.join(process.cwd(), "fonts/CormorantGaramond-Variable.ttf"),
+      path.join(process.cwd(), "fonts/Amiri-Regular.ttf"),
+      "./fonts/CormorantGaramond-Variable.ttf",
+      "./fonts/Amiri-Regular.ttf",
+    ];
+    const fontFiles = [...new Set(candidateFonts.filter((f) => fs.existsSync(f)))];
+
     const resvg = new Resvg(svg, {
       fitTo: { mode: "width", value: W },
       font: {
         loadSystemFonts: false,
-        fontFiles: [
-          "./fonts/CormorantGaramond-Variable.ttf",
-          "./fonts/Amiri-Regular.ttf",
-        ],
+        fontFiles: fontFiles.length > 0 ? fontFiles : undefined,
         defaultFontFamily: "Cormorant Garamond, Amiri",
       },
     });
